@@ -15,6 +15,7 @@ Variante: alunos propõem; projetos preferem por nota desc (5>4>3) e id asc tie-
 Lower-quotas: heurística de pós-processamento (descrita no README).
 """
 
+import numpy as np
 import pandas as pd
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -201,11 +202,17 @@ def visualizar_grafo(projetos, alunos, iteracao_data, iteracao):
     # Definição das colunas com espaçamento aumentado
     X_PROJETO = 1
     X_ALUNO = 5 # Aumenta a separação horizontal para 4 unidades (5 - 1)
-    
-    # Projetos na coluna 1
-    pos.update((node, (X_PROJETO, -i)) for i, node in enumerate(projetos_nodes))
-    # Alunos na coluna 2
-    pos.update((node, (X_ALUNO, -i)) for i, node in enumerate(alunos_nodes))
+
+    proj_y = np.linspace(0, -(len(projetos_nodes)-1) * 2000, len(projetos_nodes))
+    alunos_y = np.linspace(0, -(len(alunos_nodes)-1) * 500, len(alunos_nodes))
+
+    pos = {}
+
+    for y, node in zip(proj_y, projetos_nodes):
+        pos[node] = (X_PROJETO, y)
+
+    for y, node in zip(alunos_y, alunos_nodes):
+        pos[node] = (X_ALUNO, y)
     
     # --- 2. Configuração das Arestas (Cores Conforme a Especificação Textual) ---
     edges_map = defaultdict(lambda: {'proposta': False, 'emparelhamento': False, 'rejeicao': False})
@@ -244,9 +251,7 @@ def visualizar_grafo(projetos, alunos, iteracao_data, iteracao):
     # --- 3. Desenhar o Grafo ---
     
     # Aumenta a largura da figura para acomodar o maior espaçamento entre colunas
-    plt.figure(figsize=(16, 20)) 
-    
-    # Cores e tamanhos de nós fixos
+    plt.figure(figsize=(18, 22)) 
     node_colors = ['skyblue' if node.startswith('P') else 'lightcoral' for node in G.nodes()]
     node_sizes = 600
     
