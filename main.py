@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 import networkx as nx
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 from collections import defaultdict
 import re
 
@@ -189,22 +190,22 @@ def visualizar_grafo(projetos, alunos, iteracao_data, iteracao):
     com espaçamento aprimorado para legibilidade dos nomes.
     """
     G = nx.Graph()
-    
+
     alunos_nodes = sorted([a.matricula for a in alunos.values()])
     projetos_nodes = sorted(list(projetos.keys()))
-    
+
     G.add_nodes_from(projetos_nodes, bipartite=0)
     G.add_nodes_from(alunos_nodes, bipartite=1)
-    
+
     # --- 1. POSICIONAMENTO FIXO (Layout Bipartido Estruturado) ---
     pos = {}
-    
+
     # Definição das colunas com espaçamento aumentado
     X_PROJETO = 1
-    X_ALUNO = 5 # Aumenta a separação horizontal para 4 unidades (5 - 1)
+    X_ALUNO = 5  # Aumenta a separação horizontal para 4 unidades (5 - 1)
 
-    proj_y = np.linspace(0, -(len(projetos_nodes)-1) * 2000, len(projetos_nodes))
-    alunos_y = np.linspace(0, -(len(alunos_nodes)-1) * 500, len(alunos_nodes))
+    proj_y = np.linspace(0, -(len(projetos_nodes) - 1) * 2000, len(projetos_nodes))
+    alunos_y = np.linspace(0, -(len(alunos_nodes) - 1) * 500, len(alunos_nodes))
 
     pos = {}
 
@@ -213,61 +214,79 @@ def visualizar_grafo(projetos, alunos, iteracao_data, iteracao):
 
     for y, node in zip(alunos_y, alunos_nodes):
         pos[node] = (X_ALUNO, y)
-    
+
     # --- 2. Configuração das Arestas (Cores Conforme a Especificação Textual) ---
-    edges_map = defaultdict(lambda: {'proposta': False, 'emparelhamento': False, 'rejeicao': False})
-    
+    edges_map = defaultdict(
+        lambda: {"proposta": False, "emparelhamento": False, "rejeicao": False}
+    )
+
     # Prioridade de cor: Rejeição > Emparelhamento > Proposta
-    for mat, cod in iteracao_data['rejeicoes']:
-        edges_map[(mat, cod)]['rejeicao'] = True
-    for mat, cod in iteracao_data['emparelhamentos']:
-        edges_map[(mat, cod)]['emparelhamento'] = True
-    for mat, cod in iteracao_data['propostas']:
-        edges_map[(mat, cod)]['proposta'] = True
+    for mat, cod in iteracao_data["rejeicoes"]:
+        edges_map[(mat, cod)]["rejeicao"] = True
+    for mat, cod in iteracao_data["emparelhamentos"]:
+        edges_map[(mat, cod)]["emparelhamento"] = True
+    for mat, cod in iteracao_data["propostas"]:
+        edges_map[(mat, cod)]["proposta"] = True
 
-    edges = []
-    edge_colors = []
-    edge_widths = []
-
-    for (mat, cod), status in edges_map.items():
-        if status['rejeicao']:
-            color = 'red' 
-            width = 1.0
-        elif status['emparelhamento']:
-            color = 'blue'
-            width = 2.5 
-        elif status['proposta']:
-            color = 'green'
-            width = 1.5
-        else:
-            continue
-            
-        edges.append((mat, cod))
-        edge_colors.append(color)
-        edge_widths.append(width)
-
-    G.add_edges_from(edges)
-    
     # --- 3. Desenhar o Grafo ---
-    
+
     # Aumenta a largura da figura para acomodar o maior espaçamento entre colunas
-    plt.figure(figsize=(18, 22)) 
-    node_colors = ['skyblue' if node.startswith('P') else 'lightcoral' for node in G.nodes()]
+    plt.figure(figsize=(20, 24))
+    node_colors = [
+        "skyblue" if node.startswith("P") else "lightcoral" for node in G.nodes()
+    ]
     node_sizes = 600
-    
-    nx.draw(G, 
-            pos, 
-            with_labels=True, 
-            node_color=node_colors, 
-            node_size=node_sizes, 
-            font_size=9, 
-            edge_color=edge_colors,
-            width=edge_widths,
-            labels={node: node for node in G.nodes()})
-    
-    plt.title(f"Iteração {iteracao}: Evolução do Emparelhamento (SPA) - Formato Bipartido Fixo")
+
+    nx.draw_networkx_nodes(
+        G, pos, node_color=node_colors, node_size=node_sizes, edgecolors="black"
+    )
+    nx.draw_networkx_labels(G, pos, font_size=9, font_weight="bold")
+
+    edges_p = [(cod, mat) for (mat, cod), s in edges_map.items() if s["proposta"]]
+    edges_e = [(cod, mat) for (mat, cod), s in edges_map.items() if s["emparelhamento"]]
+    edges_r = [(cod, mat) for (mat, cod), s in edges_map.items() if s["rejeicao"]]
+
+    edges = edges_p + edges_e + edges_r
+    for u, v in edges:
+        G.add_edge(u, v)
+
+    nx.draw_networkx_edges(
+        G,
+        pos,
+        edgelist=edges_p,
+        edge_color="green",
+        width=1.5,
+    )
+
+    nx.draw_networkx_edges(
+        G,
+        pos,
+        edgelist=edges_e,
+        edge_color="blue",
+        width=2.5,
+    )
+
+    nx.draw_networkx_edges(
+        G,
+        pos,
+        edgelist=edges_r,
+        edge_color="red",
+        width=1.0,
+    )
+
+    legend_elements = [
+        Line2D([0], [0], color="green", lw=3, label="Proposta"),
+        Line2D([0], [0], color="blue", lw=4, label="Emparelhamento"),
+        Line2D([0], [0], color="red", lw=2, linestyle="dashed", label="Rejeição"),
+    ]
+    plt.legend(handles=legend_elements, loc="upper left", bbox_to_anchor=(1, 0.5), fontsize=10, frameon=True)
+
+    plt.title(
+        f"Iteração {iteracao}: Evolução do Emparelhamento (SPA) - Formato Bipartido Fixo"
+    )
     plt.axis("off")
     plt.show()
+
 # --- 6. SAÍDA E CÁLCULO DE MÉTRICAS ---
 
 def gerar_matriz_emparelhamento(alunos, projetos):
